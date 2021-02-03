@@ -3,6 +3,7 @@
 import bigInt from 'big-integer';
 import { combination, permutation } from 'js-combinatorics';
 import _clone from 'lodash/clone';
+import _cloneDeep from 'lodash/cloneDeep';
 import _difference from 'lodash/difference';
 import _flatten from 'lodash/flatten';
 import _groupBy from 'lodash/groupBy';
@@ -319,7 +320,45 @@ export const allPossibleAssignments = function* ({ current }) {
   });
 };
 
-export const calculateMovesToBestPairing = ({ current, history }) => {
+const convertLockedPeopleToEquivalents = (current) => {
+  let currentCopy = _cloneDeep(current);
+  const laneKeys = currentCopy.lanes.filter((l) => !l.locked).map(key);
+  const people = currentCopy.entities.filter(
+    (e) =>
+    e.type === 'person' &&
+    (e.location === constants.LOCATION.UNASSIGNED || laneKeys.includes(e.location))
+  );
+  people.forEach((person) => {
+    // move unassigned + locked people to out
+    if (person.location == constants.LOCATION.UNASSIGNED && person.locked) {
+      person.location = constants.LOCATION.OUT;
+    }
+  })
+  const peopleLocations = _groupBy(people, 'location');
+  currentCopy.lanes.forEach((l) => {
+    if (peopleLocations[key(l)] && peopleLocations[key(l)].length > 0) {
+      // someone is in this lane
+      const lockedCount = peopleLocations[key(l)].filter((person) => person.locked).length;
+      if (lockedCount > 0) {
+        // someone will hold context
+        if (lockedCount > 1) {
+          // there are two or more locked people in this lane, so no planning needed
+          // => lock the lane
+          l.locked = true;
+        }
+        // Since there is someone already holding context, unassign all unlocked people
+        peopleLocations[key(l)].filter((person) => !person.locked).forEach(
+          (person) => person.location = constants.LOCATION.UNASSIGNED
+        );
+      }
+    }
+  })
+
+  return currentCopy;
+};
+
+export const calculateMovesToBestPairing = ({current: rawCurrent, history}) => {
+  const current = convertLockedPeopleToEquivalents(rawCurrent);
   const laneKeys = current.lanes.filter((l) => !l.locked).map(key);
   let optimizedHistory = [];
   const people = current.entities.filter(
