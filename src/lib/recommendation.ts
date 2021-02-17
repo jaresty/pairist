@@ -1,7 +1,7 @@
 // @ts-nocheck
 
 import bigInt from 'big-integer';
-import { combination, permutation } from 'js-combinatorics';
+import {combination, permutation} from 'js-combinatorics';
 import _clone from 'lodash/clone';
 import _cloneDeep from 'lodash/cloneDeep';
 import _difference from 'lodash/difference';
@@ -9,6 +9,7 @@ import _flatten from 'lodash/flatten';
 import _groupBy from 'lodash/groupBy';
 import _head from 'lodash/head';
 import _map from 'lodash/map';
+import _max from 'lodash/max';
 import _mapValues from 'lodash/mapValues';
 import _without from 'lodash/without';
 import _tail from 'lodash/tail';
@@ -18,10 +19,10 @@ import _shuffle from 'lodash/shuffle';
 import _some from 'lodash/some';
 import _concat from 'lodash/concat';
 import munkres from 'munkres-js';
-import { pairs } from './combinatorics';
+import {pairs} from './combinatorics';
 import constants from './constants';
 
-export const getMoves = ({ match, lanes }) => {
+export const getMoves = ({match, lanes}) => {
   if (match === undefined) {
     return [];
   }
@@ -67,7 +68,7 @@ export const scoreMatrix = (left, right, history, maxScore) => {
   );
 };
 
-const applyAffinities = ({ peopleKeys, people, rawScores }) => {
+const applyAffinities = ({peopleKeys, people, rawScores}) => {
   let scores = _clone(rawScores);
   for (let person of people) {
     if (person.affinities !== undefined) {
@@ -108,7 +109,7 @@ export const mergePairsScores = (scores, pairs) => {
 
 const key = (e) => e['.key'];
 
-export const allPossibleAssignments = function* ({ current }) {
+export const allPossibleAssignments = function* ({current}) {
   const laneKeys = current.lanes.filter((l) => !l.locked).map(key);
   const people = _shuffle(
     current.entities.filter(
@@ -137,7 +138,7 @@ export const allPossibleAssignments = function* ({ current }) {
     people.map((p) => p.location)
   );
 
-  const generateUniqPairings = function* ({ unassigned, remainingLaneCount }) {
+  const generateUniqPairings = function* ({unassigned, remainingLaneCount}) {
     const unassignedPeople = combination(unassigned, remainingLaneCount * 2);
     let unassignedGroup = unassignedPeople.next();
     while (unassignedGroup !== undefined) {
@@ -181,7 +182,7 @@ export const allPossibleAssignments = function* ({ current }) {
     remainingLaneCount,
   }) {
     const processSetting = function* ([person, newUnassigned, i]) {
-      const wrapUpThisLevel = function* ({ tailAssignments }) {
+      const wrapUpThisLevel = function* ({tailAssignments}) {
         while (tailAssignments.length > 0) {
           const assignment = tailAssignments.pop();
           for (let j = 0; j < assignment.unassigned.length; j++) {
@@ -218,12 +219,12 @@ export const allPossibleAssignments = function* ({ current }) {
   };
 
   const wrapperUpper = function* (nextGenerator) {
-    const wrapItem = function* ({ remainingAssignments, unassigned, wrapUp, remainingLaneCount }) {
+    const wrapItem = function* ({remainingAssignments, unassigned, wrapUp, remainingLaneCount}) {
       if (remainingAssignments.length === 0) {
         if (remainingLaneCount === 0) {
-          yield* wrapUp({ tailAssignments: [{ results: [], unassigned: unassigned }] });
+          yield* wrapUp({tailAssignments: [{results: [], unassigned: unassigned}]});
         } else {
-          const uniqNewPairings = generateUniqPairings({ unassigned, remainingLaneCount });
+          const uniqNewPairings = generateUniqPairings({unassigned, remainingLaneCount});
           let nextPairing = uniqNewPairings.next();
           while (!nextPairing.done) {
             const pairing = nextPairing.value;
@@ -311,7 +312,7 @@ export const allPossibleAssignments = function* ({ current }) {
     initialAssignments: assignments,
     unassigned,
     remainingLaneCount: totalLanes,
-    wrapUp: function* ({ tailAssignments }) {
+    wrapUp: function* ({tailAssignments}) {
       while (tailAssignments.length > 0) {
         const nextAssignment = tailAssignments.pop();
         yield nextAssignment.results.map((as) => [_without(as[0], '<solo>'), as[1]]);
@@ -325,8 +326,8 @@ const convertLockedPeopleToEquivalents = (current) => {
   const laneKeys = currentCopy.lanes.filter((l) => !l.locked).map(key);
   const people = currentCopy.entities.filter(
     (e) =>
-    e.type === 'person' &&
-    (e.location === constants.LOCATION.UNASSIGNED || laneKeys.includes(e.location))
+      e.type === 'person' &&
+      (e.location === constants.LOCATION.UNASSIGNED || laneKeys.includes(e.location))
   );
   people.forEach((person) => {
     // move unassigned + locked people to out
@@ -376,7 +377,7 @@ export const calculateMovesToBestPairing = ({current: rawCurrent, history}) => {
     peopleKeys.push('<solo>');
   }
   const lanes = Object.assign(
-    ...laneKeys.map((key) => ({ [key]: [] })),
+    ...laneKeys.map((key) => ({[key]: []})),
     _mapValues(
       _groupBy(
         people.filter((e) => laneKeys.includes(e.location)),
@@ -393,7 +394,7 @@ export const calculateMovesToBestPairing = ({current: rawCurrent, history}) => {
   let maxScore = 0;
 
   if (history && history.length > 0) {
-    maxScore = bigInt(parseInt(_last(history)['.key']));
+    maxScore = bigInt(_max(history.map((h) => parseInt(h['.key']))));
 
     optimizedHistory = history.map((h) => {
       const groups = _groupBy(
@@ -419,14 +420,15 @@ export const calculateMovesToBestPairing = ({current: rawCurrent, history}) => {
           right: people,
         });
       });
-      return { score, lanes };
+      return {score, lanes};
     });
   } else {
     optimizedHistory = [];
   }
 
   const rawScores = scoreMatrix(peopleKeys, peopleKeys, optimizedHistory, maxScore + 1);
-  const scores = applyAffinities({ peopleKeys, people, rawScores });
+  const scores = applyAffinities({peopleKeys, people, rawScores});
+  console.log(scores);
 
   // set pairing solos to lowest possible score
   const solos = _flatten(Object.values(lanes).filter((l) => l.length === 1)).map((p) =>
@@ -443,7 +445,7 @@ export const calculateMovesToBestPairing = ({current: rawCurrent, history}) => {
       return keysIndices;
     }, {});
 
-  const assts = allPossibleAssignments({ current });
+  const assts = allPossibleAssignments({current});
   let nextAssignment = assts.next();
   if (nextAssignment.done) {
     return [];
@@ -453,7 +455,7 @@ export const calculateMovesToBestPairing = ({current: rawCurrent, history}) => {
   let highestScore = bestPairing.reduce((sum, a) => {
     const pair = a[0];
     const lane = a[1];
-    return sum.add(scoreAssignment({ pair, lane, pairKeyIndices, scores }));
+    return sum.add(scoreAssignment({pair, lane, pairKeyIndices, scores}));
   }, bigInt(0));
 
   let assignment = bestPairing;
@@ -463,7 +465,7 @@ export const calculateMovesToBestPairing = ({current: rawCurrent, history}) => {
     const pairScore = assignment.reduce((sum, a) => {
       const pair = a[0];
       const lane = a[1];
-      return sum.add(scoreAssignment({ pair, lane, pairKeyIndices, scores }));
+      return sum.add(scoreAssignment({pair, lane, pairKeyIndices, scores}));
     }, bigInt(0));
 
     if (pairScore > highestScore) {
@@ -473,10 +475,10 @@ export const calculateMovesToBestPairing = ({current: rawCurrent, history}) => {
     nextAssignment = assts.next();
   }
 
-  return getMoves({ match: bestPairing, lanes });
+  return getMoves({match: bestPairing, lanes});
 };
 
-const scoreAssignment = ({ pair, lane, pairKeyIndices, scores }) => {
+const scoreAssignment = ({pair, lane, pairKeyIndices, scores}) => {
   const firstPerson = pairKeyIndices[pair[0]];
   let secondPerson = firstPerson;
   if (pair[1] !== undefined) {
@@ -487,7 +489,7 @@ const scoreAssignment = ({ pair, lane, pairKeyIndices, scores }) => {
   return pairScore;
 };
 
-export const calculateMovesToBestAssignment = ({ left, right, current, history }) => {
+export const calculateMovesToBestAssignment = ({left, right, current, history}) => {
   const laneKeys = current.lanes.filter((l) => !l.locked).map(key);
   const leftEntities = current.entities.filter(
     (e) => e.type === left && laneKeys.includes(e.location)
@@ -529,7 +531,7 @@ export const calculateMovesToBestAssignment = ({ left, right, current, history }
           right: entities.filter((e) => e.type === right),
         });
       });
-      return { score, lanes };
+      return {score, lanes};
     });
   } else {
     history = [];
