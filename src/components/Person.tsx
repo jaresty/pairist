@@ -17,10 +17,11 @@ interface Props {
   isLocked?: boolean;
   draggable: boolean;
   editable?: boolean;
+  contextCount: number;
 }
 
 export default function Person(props: Props) {
-  const { displayName, teamId, isLocked, userId } = props;
+  const { displayName, teamId, isLocked, userId, contextCount } = props;
   const { identiconString } = useAdditionalUserInfo(userId);
   const [, setModalContent] = useModal();
 
@@ -52,7 +53,7 @@ export default function Person(props: Props) {
 
   return (
     <div
-      className={cn(styles.person)}
+      className={cn(styles.person, styles["contextCount" + Math.min(contextCount, 3)])}
       draggable={props.draggable && !isLocked}
       onDragStart={onDragStart}
     >
@@ -84,6 +85,21 @@ export default function Person(props: Props) {
 
 const styles = css`
   @import '../variables.scss';
+
+  .contextCount0 {
+    transform: scale(1.1);
+    box-shadow: 0px 24px 15px -15px rgba(0,0,0,0.4);
+  }
+  .contextCount1 {
+    box-shadow: 0px 16px 10px -6px rgba(0,0,0,0.4);
+  }
+  .contextCount2 {
+    transform: scale(0.95);
+    box-shadow: 0px 8px 5px -3px rgba(0,0,0,0.4);
+  }
+  .contextCount3 {
+    transform: scale(0.9);
+  }
 
   .person {
     background: var(--color-theme);

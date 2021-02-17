@@ -57,6 +57,7 @@ export default function Pairs() {
       displayName: memberData.displayName,
       photoURL: memberData.photoURL,
       isLocked: person.isLocked,
+      contextCount: person.contextCount,
     });
   }
 

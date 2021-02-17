@@ -103,6 +103,7 @@ export default function Lane(props: Props) {
               teamId={teamId}
               isLocked={person.isLocked}
               photoURL={person.photoURL}
+              contextCount={person.contextCount}
               draggable={!isLocked}
             />
           ))}
