@@ -14,7 +14,6 @@ import _mapValues from 'lodash/mapValues';
 import _without from 'lodash/without';
 import _tail from 'lodash/tail';
 import _remove from 'lodash/remove';
-import _last from 'lodash/last';
 import _shuffle from 'lodash/shuffle';
 import _some from 'lodash/some';
 import _concat from 'lodash/concat';
@@ -428,7 +427,6 @@ export const calculateMovesToBestPairing = ({current: rawCurrent, history}) => {
 
   const rawScores = scoreMatrix(peopleKeys, peopleKeys, optimizedHistory, maxScore + 1);
   const scores = applyAffinities({peopleKeys, people, rawScores});
-  console.log(scores);
 
   // set pairing solos to lowest possible score
   const solos = _flatten(Object.values(lanes).filter((l) => l.length === 1)).map((p) =>
@@ -510,7 +508,7 @@ export const calculateMovesToBestAssignment = ({left, right, current, history}) 
   let maxScore = 0;
 
   if (history && history.length > 0) {
-    maxScore = parseInt(_last(history)['.key']);
+    maxScore = bigInt(_max(history.map((h) => parseInt(h['.key']))));
 
     history = history.map((h) => {
       const groups = _groupBy(
